@@ -53,5 +53,5 @@ for (i in 1:nrow(gork_vil)) {
 # Combine all dest.loc.w.cost variables into one SpatialPointsDataFrame
 dest.loc.w.cost_df_comb <- do.call(rbind, lapply(list_dest.loc.w.cost, function(result) result$dest.loc.w.cost)) %>% 
   as_tibble() %>% 
-  group_by(Site) %>%
+  group_by(PlotNo) %>%
   summarise(average_cost = mean(cost, na.rm = TRUE))
