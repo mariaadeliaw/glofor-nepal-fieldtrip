@@ -53,5 +53,23 @@ for (i in 1:nrow(gork_vil)) {
 # Combine all dest.loc.w.cost variables into one SpatialPointsDataFrame
 dest.loc.w.cost_df_comb <- do.call(rbind, lapply(list_dest.loc.w.cost, function(result) result$dest.loc.w.cost)) %>% 
   as_tibble() %>% 
-  group_by(PlotNo) %>%
+  group_by(PlotNo) 
+
+dest.loc.w.cost_df_comb_avg <- dest.loc.w.cost_df_comb %>% 
   summarise(average_cost = mean(cost, na.rm = TRUE))
+
+# save rds
+saveRDS(dest.loc.w.cost_df_comb, "r/rds/result_cost.rds")
+
+
+# compare methods ---------------------------------------------------------
+
+result_comp <- movecomp(dtm = gork_cont,
+                        origin = current_row,
+                        #studyplot = study_ext,
+                        destin = psp,
+                        choice = c("t",
+                                   "wcs",
+                                   "pcf"))
+
+result_comp_df <- result_comp$LCPs %>% as_tibble()

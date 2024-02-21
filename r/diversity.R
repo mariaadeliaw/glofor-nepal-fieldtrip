@@ -1,6 +1,7 @@
 library(vegan)
 library(dplyr)
 library(tidyr)
+library(readxl)
 
 # location of data from local
 psp_data <- "data/Gyachhowk2016-2019extractForGLOFOR-EDIT.xlsx"
@@ -86,6 +87,12 @@ diversity_stat_shanon <- merge(diversity_stat_2016_shanon, diversity_stat_2019_s
   mutate(across(where(is.numeric), ~ round(., 4))) %>% 
   arrange(difference)
 
-diversity_stat_filt_shanon <- diversity_stat %>% 
+diversity_stat_filt_shanon <- diversity_stat_shanon %>% 
   mutate(PlotNo = as.numeric(PlotNo)) %>%
   dplyr::select(PlotNo, difference)
+
+
+# save rds ----------------------------------------------------------------
+
+saveRDS(diversity_stat, "r/rds/diversity_stat.rds")
+saveRDS(diversity_stat_shanon, "r/rds/diversity_stat_shanon.rds")

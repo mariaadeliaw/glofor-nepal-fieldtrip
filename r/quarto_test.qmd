@@ -1,0 +1,283 @@
+---
+title: "Forest Ecology Group Pre-Analaysis"
+format:
+  html:
+    toc: true
+    toc-location: left
+editor: visual
+execute:
+  echo: false
+warning: false
+---
+
+```{r}
+# load data
+combined_ivis <- readRDS("rds/combined_ivis.rds")
+ivi_2016_204 <- readRDS("rds/ivi_2016_204.rds")
+ivi_2019_204 <- readRDS("rds/ivi_2019_204.rds")
+```
+
+```{r}
+# color code
+#Set a few color variables to make our table more visually appealing
+
+customGreen0 = "#DeF7E9"
+
+customGreen = "#71CA97"
+
+customRed = "#ff7f7f"
+
+customRed0 = "#940000"
+library(formattable
+        )
+improvement_formatter <- formatter("span", 
+                                   style = x ~ style(font.weight = "bold", 
+                                                     color = ifelse(x > 0, customGreen, ifelse(x < 0, customRed, "black"))), 
+                                   x ~ icontext(ifelse(x>0, "arrow-up", "arrow-down"), x)
+                                   )
+```
+
+# Importance Value and Biodiversity Indices of 2016 and 2019
+
+## Importance Value
+
+Importance value is grouped based on CF to get a group of permanent sample plots (PSP).
+
+::: panel-tabset
+### CF Site 201
+
+```{r}
+library(formattable)
+
+formattable(combined_ivis[[1]],
+            align =c("l","c","c","r"),
+            list(
+            'importance.value.2016' = color_tile(customGreen0, customGreen),
+            'importance.value.2019' = color_tile(customGreen0, customGreen),
+            'difference' = improvement_formatter
+            ))
+```
+
+### CF Site 202
+
+```{r}
+library(formattable)
+
+formattable(combined_ivis[[2]],
+            align =c("l","c","c","r"),
+            list(
+            'importance.value.2016' = color_tile(customGreen0, customGreen),
+            'importance.value.2019' = color_tile(customGreen0, customGreen),
+            'difference' = improvement_formatter
+            ))
+```
+
+### CF Site 204
+
+This site is only represented by 1 plot that is occupied by a single species (*Alnus nepalensis*) in 2016 and 2 species in 2019
+
+2016
+
+```{r}
+library(gt)
+ivi_2016_204 %>%gt()
+```
+
+2019
+
+```{r}
+ivi_2019_204 %>% gt()
+```
+:::
+
+## Biodiversity Indices
+
+```{r}
+diversity_stat <- readRDS("rds/diversity_stat.rds")
+diversity_stat_shanon <- readRDS("rds/diversity_stat_shanon.rds")
+```
+
+::: panel-tabset
+### Simpson's index
+
+```{r}
+formattable(diversity_stat,
+            align =c("l","c","c","r"),
+            list(
+            'Simpson_2016' = color_tile(customGreen0, customGreen),
+            'Simpson_2019' = color_tile(customGreen0, customGreen),
+            'difference' = improvement_formatter
+            ))
+```
+
+### Shannon's index
+
+```{r}
+formattable(diversity_stat_shanon,
+            align =c("l","c","c","r"),
+            list(
+            'Simpson_2016' = color_tile(customGreen0, customGreen),
+            'Simpson_2019' = color_tile(customGreen0, customGreen),
+            'difference' = improvement_formatter
+            ))
+```
+:::
+
+# Cost Distance Analysis
+
+This is the cost distance analysis of the permanent sample plot (PSP) locations to the nearest villages in the area.
+
+## Location of villages and PSP
+
+Blue: PSP Red: Villages
+
+```{r}
+#| warning: false
+#| message: false
+
+library(tidyverse)
+library(sf)
+
+spat_data_dir <- "D:/GLOFOR/UCPH/Preparing-Nepal/spatial_data/"
+
+study_ext_path <- paste0(spat_data_dir, "/final-extent-proposal.shp")
+study_ext <- st_read(study_ext_path, quiet = TRUE)
+
+gork_vil_path <- paste0(spat_data_dir, "/settlement_gorkha_list.shp")
+
+gork_vil <- st_read(gork_vil_path, quiet = TRUE) %>% 
+  st_crop(study_ext) 
+ # %>% 
+# as("Spatial")
+
+gork_vil_data <- as_tibble(gork_vil) %>% 
+  dplyr::select(VIL_NAME, lat, long)
+
+psp_path <- paste0(spat_data_dir, "/CF-Plots.shp")
+psp <- st_read(psp_path, quiet = TRUE) %>% 
+  st_crop(study_ext) %>%
+  dplyr::select(PlotNo, ForestType, Site)
+# %>% 
+# as("Spatial")
+
+library(leaflet)
+leaflet() %>% 
+  addTiles(urlTemplate = "https://mts1.google.com/vt/lyrs=s&hl=en&src=app&x={x}&y={y}&z={z}&s=G", attribution = 'Google') %>%  addCircleMarkers(data = gork_vil, label = ~VIL_NAME, color = "red") %>% 
+  addCircles(data = psp, label = ~PlotNo )
+
+```
+
+```{r}
+gork_vil_data %>% gt()
+```
+
+Cost distance analysis was conducted using Tobler's hike function, where walking speed is calculated based on slope gradient. Cost distance is shown in walking-time needed to get from PSP to the nearest villages.
+
+::: panel-tabset
+```{r}
+getwd()
+```
+
+#### Milim
+
+![Milim](output/costdistance/vil1.png)
+
+#### Thumgaun
+
+![Thumgaun](output/costdistance/vil2.png)
+
+#### Mathar
+
+![Mathar](output/costdistance/vil3.png)
+
+#### Bansbot
+
+![Bansbot](output/costdistance/vil4.png)
+
+#### Ghyachowk
+
+![Ghyachowk](output/costdistance/vil5.png)
+:::
+
+The average of the walking-time from nearest villages to PSP were calculated. Based on the analysis, **plot 90011** has the highest average of walking-time.
+
+```{r}
+library(gt)
+library(viridis)
+
+result <- readRDS("rds/result_cost.rds")
+
+result_cost <- result %>%
+  as_tibble()
+
+
+
+# formattable(result_cost,
+#             list(
+#             'average_cost' = color_tile(customRed, customRed0)
+#             ))
+result_cost %>% 
+  mutate(PlotNo = factor(PlotNo)) %>%
+  ggplot(aes(x = PlotNo, y = cost)) + 
+  geom_violin() +
+  scale_fill_viridis(discrete = TRUE, alpha=0.6, option="A")
+
+result_cost %>%
+  group_by(PlotNo) %>% 
+  summarise(average_cost = mean(cost, na.rm = TRUE)) %>% 
+  arrange(average_cost)%>% 
+  gt()
+```
+
+# Statistical Analysis
+
+Linear regression model was built to analyze the relationship between the diversity indices change from 2016 to 2019 and cost distance of each PSP.
+
+### Simpson
+
+```{r}
+library(broom)
+library(ggplot2)
+
+cost_diversity <- readRDS("rds/cost_diversity.rds")
+lm_psp <- readRDS("rds/lm_psp.rds")
+
+lm_psp %>% tidy() %>% gt()
+
+# normality test
+shapiro.test(residuals(lm_psp))
+
+# pearson correlation test
+print(c("Pearson Correlation Test"))
+cor(cost_diversity$average_cost, cost_diversity$difference)
+
+
+ggplot(cost_diversity, aes(x = average_cost, y = difference)) +
+  geom_point() +  # Add data points
+  geom_smooth(method = "lm", se = FALSE)
+```
+
+### Shannon
+
+```{r}
+cost_diversity_shanon <- readRDS("rds/cost_diversity_shanon.rds")
+lm_psp_shanon <- readRDS("rds/lm_psp_shanon.rds")
+
+lm_psp_shanon %>% 
+  tidy() %>% gt()
+
+# normality test
+shapiro.test(residuals(lm_psp_shanon))
+
+# pearson correlation test
+print(c("Pearson Correlation Test"))
+cor(cost_diversity_shanon$average_cost, cost_diversity_shanon$difference)
+
+
+ggplot(cost_diversity_shanon, aes(x = average_cost, y = difference)) +
+  geom_point() +  # Add data points
+  geom_smooth(method = "lm", se = FALSE)
+
+```
+
+There is no correlation between the diversity indices change with cost distance of each PSP.

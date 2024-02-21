@@ -131,10 +131,17 @@ merge_ivis <- function(ivi_objects) {
       replace(is.na(.), 0) %>% 
       mutate(difference = importance.value.2019 - importance.value.2016) %>% 
       mutate(across(where(is.numeric), ~ round(., 4))) %>% 
-      arrange(difference)
+      arrange(difference) %>% 
+      mutate(species = stringr::str_to_title(tolower(species))) 
+    
     # Append the merged dataframe to the list
     merged_ivis[[site]] <- ivi_comp
   }
   return(merged_ivis)
 }
 combined_ivis <- merge_ivis(ivi_objects)
+
+# save rds
+saveRDS(combined_ivis, "r/rds/combined_ivis.rds")
+saveRDS(ivi_2016_204, "r/rds/ivi_2016_204.rds")
+saveRDS(ivi_2019_204, "r/rds/ivi_2019_204.rds")
