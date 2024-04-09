@@ -4,6 +4,8 @@ library(tidyr)
 library(readxl)
 library(ggplot2)
 library(BiodiversityR)
+library(ggpubr)
+library(grid)
 
 
 # location of data from local
@@ -30,6 +32,17 @@ clean_background <- theme(plot.background = element_rect("white"),
                           legend.text = element_text(size = 12),
                           legend.key = element_rect("white"))
 pal <- c("lightsalmon1", "gold1", "palegreen4", "lightblue1", "khaki1", "lightcoral")
+BioR.theme <- theme(
+  panel.background = element_blank(),
+  panel.border = element_blank(),
+  panel.grid = element_blank(),
+  axis.line = element_line("gray25"),
+  text = element_text(size = 12, family="Arial"),
+  axis.text = element_text(size = 10, colour = "gray25"),
+  axis.title = element_text(size = 14, colour = "gray25"),
+  legend.title = element_text(size = 14),
+  legend.text = element_text(size = 14),
+  legend.key = element_blank())
 
 # prepare vegan dataset
 psp_div_2016 <- psp_data %>% 
@@ -87,63 +100,61 @@ psp_div_comb <- bind_rows(psp_div_2016, psp_div_2019, psp_div_2024)
 
 # Species Richness -----------------------------------------------------------------
 
-# 2016
-sppr_2016 <- specnumber(psp_div_2016)
-sppr_2016 <- sppr_2016 %>% 
-  as.data.frame() %>% 
-  tibble::rownames_to_column(var = "PlotNo") %>% 
-  as_tibble()
-colnames(sppr_2016) <- c("PlotNo","Spec_Num")
+# total community species richness
+diversityresult(psp_div_2016, index = "richness", method = "pooled")
+diversityresult(psp_div_2019, index = "richness", method = "pooled")
+diversityresult(psp_div_2024, index = "richness", method = "pooled")
 
-sppr_2016_df <- sppr_2016 %>% 
-  # enframe() %>% 
-  full_join(access_group, by = c("PlotNo"))
+# 2016
+sppr_2016 <- diversitycomp(x = psp_div_2016, 
+              y=access_group, 
+              factor1="Accessibility", 
+              index="richness",
+              method = "mean") %>% 
+  as.data.frame() %>% 
+  tibble::rownames_to_column(var = "Accessibility") %>% 
+  as_tibble() %>% 
+  rename(richness_2016 = richness)
 
 # 2019
-sppr_2019 <- specnumber(psp_div_2019) 
-sppr_2019 <- sppr_2019 %>% 
+sppr_2019 <- diversitycomp(x = psp_div_2019, 
+                           y=access_group, 
+                           factor1="Accessibility", 
+                           index="richness",
+                           method = "mean") %>% 
   as.data.frame() %>% 
-  tibble::rownames_to_column(var = "PlotNo") %>% 
-  as_tibble()
-colnames(sppr_2019) <- c("PlotNo","Spec_Num")
-sppr_2019_df <- sppr_2019 %>% 
-  # enframe() %>% 
-  full_join(access_group, by = c("PlotNo"))
+  tibble::rownames_to_column(var = "Accessibility") %>% 
+  as_tibble() %>% 
+  rename(richness_2019 = richness)
 
 # 2024
-sppr_2024 <- specnumber(psp_div_2024) 
-sppr_2024 <- sppr_2024 %>% 
+sppr_2024 <- diversitycomp(x = psp_div_2024, 
+                           y=access_group, 
+                           factor1="Accessibility", 
+                           index="richness",
+                           method = "mean") %>% 
   as.data.frame() %>% 
-  tibble::rownames_to_column(var = "PlotNo") %>% 
-  as_tibble()
-colnames(sppr_2024) <- c("PlotNo","Spec_Num")
+  tibble::rownames_to_column(var = "Accessibility") %>% 
+  as_tibble() %>% 
+  rename(richness_2024 = richness)
 
-sppr_2024_df <- sppr_2024 %>% 
-  # enframe() %>% 
-  full_join(access_group, by = c("PlotNo"))
 
 # combine
-sppr_comb <- sppr_2016_df %>% 
-  left_join(sppr_2019_df, by = "PlotNo") %>% 
-  left_join(sppr_2024_df, by = "PlotNo") %>% 
-  select(PlotNo, Accessibility, Spec_Num.x, Spec_Num.y, Spec_Num) %>% 
-  rename(Species_Number_2016 = Spec_Num.x,
-         Species_Number_2019 = Spec_Num.y,
-         Species_Number_2024 = Spec_Num) %>% 
-  gather(Year, Species_Number, -PlotNo, -Accessibility) %>%
-  mutate(Year = factor(Year, levels = c("Species_Number_2016", "Species_Number_2019", "Species_Number_2024")),
-         Year = gsub("Species_Number_", "", Year))
+sppr_comb <- sppr_2016 %>% 
+  left_join(sppr_2019, by = "Accessibility") %>% 
+  left_join(sppr_2024, by = "Accessibility") %>% 
+  select(Accessibility, n, richness_2016, richness_2019, richness_2024)
 
-sppr_comb_plot <- ggplot(sppr_comb, aes(x = Accessibility, y = Species_Number, fill = Year)) +
-  geom_boxplot() +
-  labs(title = "Species Number Distribution by Accessibility Level",
-       x = "Accessibility",
-       y = "Species Number",
-       fill = "Year") +
-  theme_minimal() +
-  facet_wrap(~ Year)
-ggsave("r/output/sppr_comb_plot.jpeg", plot = sppr_comb_plot, width = 10, height = 6, dpi = 300)
-
+# sppr_comb_plot <- ggplot(sppr_comb, aes(x = Accessibility, y = Species_Number, fill = Year)) +
+#   geom_boxplot() +
+#   labs(title = "Species Number Distribution by Accessibility Level",
+#        x = "Accessibility",
+#        y = "Species Number",
+#        fill = "Year") +
+#   theme_minimal() +
+#   facet_wrap(~ Year)
+# ggsave("r/output/sppr_comb_plot.jpeg", plot = sppr_comb_plot, width = 10, height = 6, dpi = 300)
+# 
 
 # Species Accumulation Curve ----------------------------------------------
 
@@ -151,21 +162,76 @@ sac.2016 <- accumcomp(psp_div_2016,
           y = access_group,
           factor = "Accessibility",
           method = "exact",
-          legend = F,)
+          legend = F,
+          plotit = F) %>% 
+  accumcomp.long()
 sac.2019 <- accumcomp(psp_div_2019,
                       y = access_group,
                       factor = "Accessibility",
                       method = "exact",
-                      legend = F)
+                      legend = F,
+                      plotit = F) %>% 
+  accumcomp.long()
 sac.2024 <- accumcomp(psp_div_2024,
                       y = access_group,
                       factor = "Accessibility",
                       method = "exact",
-                      legend = F)
+                      legend = F,
+                      plotit = F) %>% 
+  accumcomp.long()
+
+sac.2016.plot <- ggplot(data=sac.2016, aes(x = Sites, y = Richness, ymax =  15, ymin= 0)) + 
+  scale_x_continuous(expand=c(0, 1), sec.axis = dup_axis(labels=NULL, name=NULL)) +
+  scale_y_continuous(sec.axis = dup_axis(labels=NULL, name=NULL)) +
+  geom_line(aes(colour=Grouping), size=1) +
+  geom_point(data=subset(sac.2016, labelit==TRUE), 
+             aes(colour=Grouping, shape=Grouping), size=3) +
+  # geom_ribbon(aes(colour=Grouping), alpha=0.2, show.legend=FALSE) + 
+  BioR.theme +
+  theme(legend.position = "none") +
+  scale_color_brewer(palette = "Set1") +
+  scale_color_manual(values = pal)
+
+sac.2019.plot <- ggplot(data=sac.2019, aes(x = Sites, y = Richness, ymax =  15, ymin= 0)) + 
+  scale_x_continuous(expand=c(0, 1), sec.axis = dup_axis(labels=NULL, name=NULL)) +
+  scale_y_continuous(sec.axis = dup_axis(labels=NULL, name=NULL)) +
+  geom_line(aes(colour=Grouping), size=1) +
+  geom_point(data=subset(sac.2019, labelit==TRUE), 
+             aes(colour=Grouping, shape=Grouping), size=3) +
+  # geom_ribbon(aes(colour=Grouping), alpha=0.2, show.legend=FALSE) + 
+  BioR.theme +
+  theme(legend.position = "none") +
+  scale_color_brewer(palette = "Set1")  +
+  scale_color_manual(values = pal)
+
+sac.2024.plot <- ggplot(data=sac.2024, aes(x = Sites, y = Richness, ymax =  15, ymin= 0)) + 
+  scale_x_continuous(expand=c(0, 1), sec.axis = dup_axis(labels=NULL, name=NULL)) +
+  scale_y_continuous(sec.axis = dup_axis(labels=NULL, name=NULL)) +
+  geom_line(aes(colour=Grouping), size=1) +
+  geom_point(data=subset(sac.2024, labelit==TRUE), 
+             aes(colour=Grouping, shape=Grouping), size=3) +
+  # geom_ribbon(aes(colour=Grouping), alpha=0.2, show.legend=FALSE) + 
+  BioR.theme +
+  scale_color_brewer(palette = "Set1")  +
+  scale_color_manual(values = pal)
+
+sac.combine <- ggpubr::ggarrange(sac.2016.plot + rremove("ylab") + rremove("xlab"), 
+                                 sac.2019.plot + rremove("ylab") + rremove("xlab"), 
+                                 sac.2024.plot + rremove("ylab") + rremove("xlab"),
+                                 labels = c("2016", "2019", "2024"),
+                                 ncol = 1, nrow = 3,
+                                 common.legend = T,
+                                 legend = "right",
+                                 label.x = 0.02,  # Adjust the x position of the labels
+                                 label.y = 0.9 ) %>% 
+  annotate_figure(left = textGrob("Average number of species", rot = 90, vjust = 1, gp = gpar(cex = 1.3)),
+                bottom = textGrob("Sites", gp = gpar(cex = 1.3)))
+
+ggsave("r/output/sac.combine.jpeg", plot = sac.combine, width = 10, height = 6, dpi = 300)
 
 # Simpson ------------------------------------------------------------------
 
-diversity_stat_2016 <- diversity(psp_div_2016, index = "simpson") %>% 
+diversity_stat_2016 <- diversity(psp_div_2016, index = "invsimpson") %>% 
   as.data.frame()
 diversity_stat_2016 <- tibble::rownames_to_column(diversity_stat_2016, var = "PlotNo") %>% as_tibble()
 colnames(diversity_stat_2016) <- c("PlotNo","Simpson_2016")
@@ -182,7 +248,7 @@ div_plot_df_2016 <- diversity_stat_2016 %>%
   unite("mean_label", label, mean, sep = " = ", remove = FALSE)
 
 # 2019
-diversity_stat_2019 <- diversity(psp_div_2019, index = "simpson") %>% 
+diversity_stat_2019 <- diversity(psp_div_2019, index = "invsimpson") %>% 
   as.data.frame()
 diversity_stat_2019 <- tibble::rownames_to_column(diversity_stat_2019, var = "PlotNo") %>% as_tibble()
 colnames(diversity_stat_2019) <- c("PlotNo","Simpson_2019")
@@ -201,7 +267,7 @@ div_plot_df_2019 <- diversity_stat_2019 %>%
   unite("mean_label", label, mean, sep = " = ", remove = FALSE)
 
 # 2024
-diversity_stat_2024 <- diversity(psp_div_2024, index = "simpson") %>% 
+diversity_stat_2024 <- diversity(psp_div_2024, index = "invsimpson") %>% 
   as.data.frame()
 diversity_stat_2024 <- tibble::rownames_to_column(diversity_stat_2024, var = "PlotNo") %>% as_tibble()
 colnames(diversity_stat_2024) <- c("PlotNo","Simpson_2024")
@@ -227,9 +293,9 @@ div_plot_df_combined <- bind_rows(
 )
 
 plot_simpdiv_combined <- ggplot(div_plot_df_combined, aes(x = factor(Year), y = mean, fill = Accessibility)) +
-  geom_bar(stat = "identity", position = position_dodge(width = 0.8), color = "black") +
+  geom_bar(stat = "identity", position = position_dodge(width = 0.9), color = "black") +
   geom_errorbar(aes(ymin = mean - err, ymax = mean + err), width = 0.25, position = position_dodge(width = 0.8)) +
-  geom_text(aes(label = mean_label), position = position_dodge(width = 0.8), vjust = -0.5) +
+  geom_text(aes(label = mean_label), position = position_dodge(width = 0.9), vjust = -0.5) +
   scale_fill_manual(values = pal, name = "Accessibility") +
   labs(x = "Year",
        y = "Mean Simpson Dominance",
@@ -239,11 +305,6 @@ plot_simpdiv_combined <- ggplot(div_plot_df_combined, aes(x = factor(Year), y = 
 
 # Set dimensions and resolution
 ggsave("r/output/plot_simpdiv_combined.jpeg", plot = plot_simpdiv_combined, width = 10, height = 6, dpi = 300)
-
-
-
-
-
 
 # Shanon ------------------------------------------------------------------
 
@@ -319,71 +380,72 @@ plot_shandiv_combined <- ggplot(div_plot_df_combined_shanon, aes(x = factor(Year
 ggsave("r/output/plot_shandiv_combined.jpeg", plot = plot_shandiv_combined, width = 10, height = 6, dpi = 300)
 
 
-# Eveness -----------------------------------------------------------------
+# Renyi -------------------------------------------------------------------
 
-# Eveness
-eveness_2016 <- diversity_stat_2016_shanon %>% 
-  left_join(sppr_2016, by = "PlotNo") %>% 
-  mutate(eveness = shannon_2016/log(Spec_Num)) %>% 
-  left_join(access_group, by = "PlotNo") %>% 
-  group_by(Accessibility) %>% 
-  drop_na(eveness)
-# Summarize data by Accessibility
-sum_even_2016 <- eveness_2016 %>%
-  group_by(Accessibility) %>%
-  summarize(mean = round(mean(eveness), 2),
-            err = sd(eveness)/sqrt(length(eveness))) %>% 
-  dplyr::mutate(label = "mean") %>% 
-  unite("mean_label", label, mean, sep = " = ", remove = FALSE)
+renyi_2016 <- renyicomp(psp_div_2016, 
+                        y = access_group,
+                        factor = "Accessibility",
+                        scales=c(0, 0.25, 0.5, 1, 2, 4, 8, Inf), permutations=100) %>% 
+  renyicomp.long(label.freq=1)
+renyi_2019 <- renyicomp(psp_div_2019, 
+                        y = access_group,
+                        factor = "Accessibility",
+                        scales=c(0, 0.25, 0.5, 1, 2, 4, 8, Inf), permutations=100) %>% 
+  renyicomp.long(label.freq=1)
+renyi_2024 <- renyicomp(psp_div_2024, 
+                        y = access_group,
+                        factor = "Accessibility",
+                        scales=c(0, 0.25, 0.5, 1, 2, 4, 8, Inf), permutations=100) %>% 
+  renyicomp.long(label.freq=1)
 
-eveness_2019 <- diversity_stat_2019_shanon %>% 
-  left_join(sppr_2019, by = "PlotNo") %>% 
-  mutate(eveness = shannon_2019/log(Spec_Num)) %>% 
-  left_join(access_group, by = "PlotNo") %>% 
-  group_by(Accessibility) %>% 
-  drop_na(eveness)
-# Summarize data by Accessibility
-sum_even_2019 <- eveness_2019 %>%
-  group_by(Accessibility) %>%
-  summarize(mean = round(mean(eveness), 2),
-            err = sd(eveness)/sqrt(length(eveness))) %>% 
-  dplyr::mutate(label = "mean") %>% 
-  unite("mean_label", label, mean, sep = " = ", remove = FALSE)
+renyi_2016_plot <- ggplot(data=renyi_2016, aes(x=Scales, y=Diversity, ymax=3, ymin=0)) + 
+  scale_x_discrete() +
+  scale_y_continuous(sec.axis = dup_axis(labels=NULL, name=NULL)) +
+  geom_line(data=renyi_2016, 
+            aes(x=Obs, colour=Grouping), 
+            size=1) +
+  geom_point(data=subset(renyi_2016, labelit==TRUE), 
+             aes(colour=Grouping, shape=Grouping), 
+             alpha=0.8, size=3) +
+  BioR.theme +
+  scale_color_manual(values = pal) +
+  labs(x=expression(alpha), y = "Diversity", colour = "Accessibility", shape = "Accessibility")
+renyi_2019_plot <- ggplot(data=renyi_2019, aes(x=Scales, y=Diversity, ymax=3, ymin=0)) + 
+  scale_x_discrete() +
+  scale_y_continuous(sec.axis = dup_axis(labels=NULL, name=NULL)) +
+  geom_line(data=renyi_2019, 
+            aes(x=Obs, colour=Grouping), 
+            size=1) +
+  geom_point(data=subset(renyi_2019, labelit==TRUE), 
+             aes(colour=Grouping, shape=Grouping), 
+             alpha=0.8, size=3) +
+  BioR.theme +
+  scale_color_manual(values = pal) +
+  labs(x=expression(alpha), y = "Diversity", colour = "Accessibility", shape = "Accessibility")
+renyi_2024_plot <- ggplot(data=renyi_2024, aes(x=Scales, y=Diversity, ymax=3, ymin=0)) + 
+  scale_x_discrete() +
+  scale_y_continuous(sec.axis = dup_axis(labels=NULL, name=NULL)) +
+  geom_line(data=renyi_2024, 
+            aes(x=Obs, colour=Grouping), 
+            size=1) +
+  geom_point(data=subset(renyi_2024, labelit==TRUE), 
+             aes(colour=Grouping, shape=Grouping), 
+             alpha=0.8, size=3) +
+  BioR.theme +
+  scale_color_manual(values = pal) +
+  labs(x=expression(alpha), y = "Diversity", colour = "Accessibility", shape = "Accessibility")
 
-eveness_2024 <- diversity_stat_2024_shanon %>% 
-  left_join(sppr_2024, by = "PlotNo") %>% 
-  mutate(eveness = shannon_2024/log(Spec_Num)) %>% 
-  left_join(access_group, by = "PlotNo") %>% 
-  group_by(Accessibility) %>% 
-  drop_na(eveness)
-# Summarize data by Accessibility
-sum_even_2024 <- eveness_2024 %>%
-  group_by(Accessibility) %>%
-  summarize(mean = round(mean(eveness), 2),
-            err = sd(eveness)/sqrt(length(eveness))) %>% 
-  dplyr::mutate(label = "mean") %>% 
-  unite("mean_label", label, mean, sep = " = ", remove = FALSE)
+renyi_combined <- ggpubr::ggarrange(renyi_2016_plot + rremove("ylab") + rremove("xlab"), 
+                                     renyi_2019_plot + rremove("ylab") + rremove("xlab"), 
+                                     renyi_2024_plot + rremove("ylab") + rremove("xlab"),
+                                 labels = c("2016", "2019", "2024"),
+                                 ncol = 3, nrow = 1,
+                                 common.legend = T,
+                                 legend = "right",
+                                 label.x = 0.02,  # Adjust the x position of the labels
+                                 label.y = 0.9 ) %>% 
+  annotate_figure(left = textGrob("Diversity", rot = 90, vjust = 1, gp = gpar(cex = 1.3)),
+                  bottom = textGrob(expression(alpha), gp = gpar(cex = 1.3)))
 
-# Combine data
-combined_data_even <- bind_rows(
-  mutate(sum_even_2016, Year = 2016),
-  mutate(sum_even_2019, Year = 2019),
-  mutate(sum_even_2024, Year = 2024)
-)
-
-# Plotting
-combined_plot_even <- ggplot(combined_data_even, aes(x = Accessibility, y = mean, fill = Accessibility)) +
-  geom_bar(stat = "identity", position = position_dodge(width = 0.8), color = "black") +
-  geom_errorbar(aes(ymin = mean - err, ymax = mean + err), width = 0.25, position = position_dodge(width = 0.8)) +
-  geom_text(aes(label = mean_label), position = position_dodge(width = 0.8), vjust = -0.5) +
-  scale_fill_manual(values = pal, name = "Accessibility") +
-  labs(title = "Eveness",
-       x = "Accessibility",
-       y = "Average Eveness") +
-  theme_minimal() +
-  theme(legend.position = "top") +
-  facet_wrap(~Year)
-
-# Set dimensions and resolution
-ggsave("r/output/combined_plot_even.jpeg", plot = combined_plot_even, width = 10, height = 6, dpi = 300)
+ggsave("r/output/renyi_combined.jpeg", plot = renyi_combined, width = 10, height = 6, dpi = 300)
 

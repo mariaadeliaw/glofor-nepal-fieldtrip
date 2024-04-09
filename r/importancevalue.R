@@ -208,9 +208,9 @@ combined_ivis_filt_Easy <- combined_ivis$"Easy" %>%
   slice_max(importance.value_2024, n = 10) %>% 
   clean_names(case = "title")
   
-combined_ivis_filt_Easy %>%
-  gt() %>%
-  gtsave("r/output/combined_ivis_filt_Easy.png", expand = 10)
+# combined_ivis_filt_Easy %>%
+#   gt() %>%
+#   gtsave("r/output/combined_ivis_filt_Easy.png", expand = 10)
 
 combined_ivis_filt_Hard <- combined_ivis$"Hard"  %>%  
   left_join(ivi_reg_Hard, by = "species") %>% 
@@ -221,9 +221,9 @@ combined_ivis_filt_Hard <- combined_ivis$"Hard"  %>%
   clean_names(case = "title")
 
 
-combined_ivis_filt_Hard %>%
-  gt() %>%
-  gtsave("r/output/combined_ivis_filt_Hard.png", expand = 10)
+# combined_ivis_filt_Hard %>%
+#   gt() %>%
+#   gtsave("r/output/combined_ivis_filt_Hard.png", expand = 10)
 
 
 
